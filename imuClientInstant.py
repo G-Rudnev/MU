@@ -12,8 +12,6 @@ import numpy as np
 import time
 import threading
 
-from _XiaoRGEEK_MOTOR_ import Robot_Direction as go
-
 def Pack_Params(from_params : dict) -> str:
     s = ""
     for key in from_params:
@@ -46,20 +44,6 @@ sensor.open()
 sensor.set_filter_range(mpu6050.FILTER_BW_5)
 
 Trig = [True]
-
-# def foo():
-
-#     while True:
-
-#         # flea.back()
-#         # flea.forward()
-#         time.sleep(1.5)
-
-#         # flea.stop()
-#         time.sleep(3.0)
-#         # Trig[0] = True
-
-# thread = threading.Thread(target = foo)
 
 N = 10
 plots_N = 0
@@ -103,9 +87,6 @@ while True:
         xSpeed = ySpeed = yawSpeed = 0.0
         x = y = yaw = 0.0
 
-    # if not thread.is_alive():
-    #     thread.start()
-
     accelData = sensor.get_accel_data()
     accelData_deltaTime = time.time() - accelData_prevTime
     accelData_prevTime += accelData_deltaTime
@@ -114,50 +95,56 @@ while True:
     gyroData_deltaTime = time.time() - gyroData_prevTime
     gyroData_prevTime += gyroData_deltaTime
 
+
+    #Body Frame в https://ahrs.readthedocs.io/en/latest/nomenclature.html,
+    #правая тройка векторов
     q = filter.updateIMU(q, gyr = np.array([-gyroData['y'], gyroData['x'], gyroData['z']]) * 0.01745329252, \
                            acc = np.array([accelData['y'], -accelData['x'], accelData['z']]))
     angles = Quaternion(q).to_angles() * 57.29578 * 2.4
+
+    #знаки и оси - как сориентируешь IMU
 
     yawAccel = (gyroData['z'] - gyroData_prev['z']) / gyroData_deltaTime
     yawSpeed += yawAccel * gyroData_deltaTime
     yaw += (yawSpeed - yawAccel * gyroData_deltaTime / 2.0) * gyroData_deltaTime
     
-    # pitchAccel = (gyroData['y'] - gyroData_prev['y']) / gyroData_deltaTime
-    # pitchSpeed += pitchAccel * gyroData_deltaTime
-    # pitch += (pitchSpeed - pitchAccel * gyroData_deltaTime / 2.0) * gyroData_deltaTime
+
+    pitchAccel = (gyroData['y'] - gyroData_prev['y']) / gyroData_deltaTime
+    pitchSpeed += pitchAccel * gyroData_deltaTime
+    pitch += (pitchSpeed - pitchAccel * gyroData_deltaTime / 2.0) * gyroData_deltaTime
 
 
-    # rollAccel = (gyroData['x'] - gyroData_prev['x']) / gyroData_deltaTime
-    # rollSpeed += rollAccel * gyroData_deltaTime
-    # roll += (rollSpeed - rollAccel * gyroData_deltaTime / 2.0) * gyroData_deltaTime
+    rollAccel = (gyroData['x'] - gyroData_prev['x']) / gyroData_deltaTime
+    rollSpeed += rollAccel * gyroData_deltaTime
+    roll += (rollSpeed - rollAccel * gyroData_deltaTime / 2.0) * gyroData_deltaTime
 
-    # if n < N:
-    #     M = n
-    # else:
-    #     M = N - 1
-    # n += 1
-    # for i in range(M, 0, -1):
-    #     xAccels[i] = xAccels[i - 1]
-    #     yAccels[i] = yAccels[i - 1]
+    if n < N:
+        M = n
+    else:
+        M = N - 1
+    n += 1
+    for i in range(M, 0, -1):
+        xAccels[i] = xAccels[i - 1]
+        yAccels[i] = yAccels[i - 1]
 
-    # xAccels[0] = accelData['x'] + 9.80665 * math.sin(pitch * 0.01745329252)
-    # yAccels[0] = accelData['y'] - 9.80665 * math.sin(roll * 0.01745329252)
+    xAccels[0] = accelData['x'] + 9.80665 * math.sin(pitch * 0.01745329252)
+    yAccels[0] = accelData['y'] - 9.80665 * math.sin(roll * 0.01745329252)
     
-    # if (np.var(xAccels[:(M + 1)]) < 0.1):    #offset moving estimation
-    #     xOffset = 0.0157 * (xAccels[0] + xAccel_prev) + 0.969 * xOffset
-    #     xAccel_prev = xAccels[0]
+    if (np.var(xAccels[:(M + 1)]) < 0.1):    #offset moving estimation
+        xOffset = 0.0157 * (xAccels[0] + xAccel_prev) + 0.969 * xOffset
+        xAccel_prev = xAccels[0]
 
-    # xAccel = xAccels[0] - xOffset
-    # xSpeed += xAccel * accelData_deltaTime
-    # x += (xSpeed - xAccel * accelData_deltaTime / 2.0) * accelData_deltaTime
+    xAccel = xAccels[0] - xOffset
+    xSpeed += xAccel * accelData_deltaTime
+    x += (xSpeed - xAccel * accelData_deltaTime / 2.0) * accelData_deltaTime
 
-    # if (np.var(yAccels[:(M + 1)]) < 0.1 or n <= N):
-    #     yOffset = 0.0157 * (yAccels[0] + yAccel_prev) + 0.969 * yOffset
-    #     yAccel_prev = yAccels[0]
+    if (np.var(yAccels[:(M + 1)]) < 0.1 or n <= N):
+        yOffset = 0.0157 * (yAccels[0] + yAccel_prev) + 0.969 * yOffset
+        yAccel_prev = yAccels[0]
 
-    # yAccel = yAccels[0] - yOffset
-    # ySpeed += yAccel * accelData_deltaTime
-    # y += (ySpeed - yAccel * accelData_deltaTime / 2.0) * accelData_deltaTime
+    yAccel = yAccels[0] - yOffset
+    ySpeed += yAccel * accelData_deltaTime
+    y += (ySpeed - yAccel * accelData_deltaTime / 2.0) * accelData_deltaTime
 
     accelData_prev = accelData
     gyroData_prev = gyroData
@@ -197,6 +184,8 @@ while True:
 
         client.send(bytes(Pack_Params(globalVals), 'utf-8'))
 
+
+        #использовать, если события начинают опережать передачу данных
         # while True:
 
         #     echo = client.recv(256).decode('utf-8')

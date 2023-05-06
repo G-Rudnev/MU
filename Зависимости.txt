@@ -1,0 +1,8 @@
+pip install smbus2 (или просто smbus)
+pip install mpu6050-raspberrypi
+pip install ARHS
+
+cleaner:
+ через setup.py (linux: sudo /usr/bin/python3 setup.py install)
+ и зависимости cleaner
+ но, я думаю, тебе его и не нужно устанавливать
