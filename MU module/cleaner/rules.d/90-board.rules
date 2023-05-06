@@ -1,0 +1,10 @@
+# USB hub
+SUBSYSTEMS=="usb", ENV{.LOCAL_ifNum}="$attr{bInterfaceNumber}"
+
+SUBSYSTEMS=="usb", KERNEL=="ttyUSB[0-9]*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", ATTRS{product}=="Quad RS232-HS", ENV{.LOCAL_ifNum}=="00", MODE="666", SYMLINK+="port1", GROUP="dialout"
+
+SUBSYSTEMS=="usb", KERNEL=="ttyUSB[0-9]*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", ATTRS{product}=="Quad RS232-HS", ENV{.LOCAL_ifNum}=="01", MODE="666", SYMLINK+="main_board", GROUP="dialout"
+
+SUBSYSTEMS=="usb", KERNEL=="ttyUSB[0-9]*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", ATTRS{product}=="Quad RS232-HS", ENV{.LOCAL_ifNum}=="02", MODE="666", SYMLINK+="right_wheel", GROUP="dialout"
+
+SUBSYSTEMS=="usb", KERNEL=="ttyUSB[0-9]*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", ATTRS{product}=="Quad RS232-HS", ENV{.LOCAL_ifNum}=="03", MODE="666", SYMLINK+="left_wheel", GROUP="dialout"

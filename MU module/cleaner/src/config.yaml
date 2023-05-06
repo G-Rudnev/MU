@@ -1,0 +1,44 @@
+bus:
+    port_name: '/dev/main_board'
+    baudrate: 115200
+    debug: False
+    timeout: 1
+    main_board_id: 1
+
+gamepad:
+    use_gamepad: False
+    type: 1
+
+wheels:
+    use_wheels: False 
+    right_wheel_port: '/dev/left_wheel'
+    left_wheel_port: '/dev/right_wheel'
+    duty_limit: 0.4
+
+brushes:
+    use_brushes: True
+    right_brush_port: '/dev/ttyACM1'
+    left_brush_port: '/dev/ttyACM0'
+
+adaptive_brush_level:
+    use_adaptive_control: False
+    brush_cur_down: 18
+    brush_cur_up: 19
+    brush_cur_good_min: 18
+    brush_cur_good_max: 20 
+    brush_cur_setp: 30
+
+water_pump:
+    wheels_duty_to_start_pump: 0.05
+    min_power: 120
+    max_power: 140
+
+cleaning:
+    default_mode: 'soft'    
+
+# sensors:
+#     disable_moving_on_thresh: False
+#     us_sens_1_thresh: 1000
+#     us_sens_2_thresh: 1000
+#     us_sens_3_thresh: 1000 
+#     us_sens_4_thresh: 1000             

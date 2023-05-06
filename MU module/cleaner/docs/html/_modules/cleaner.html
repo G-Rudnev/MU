@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cleaner &mdash; Cleaner  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> Cleaner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Cleaner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="index.html">Module code</a> &raquo;</li>
+      <li>cleaner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for cleaner</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="sd">&quot;&quot;&quot;Модуль для работы с контроллером поломойщика по шине Modbus RTU.&quot;&quot;&quot;</span>
+
+<span class="n">__status__</span> <span class="o">=</span> <span class="s2">&quot;Developing&quot;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.0.1&quot;</span>
+
+<span class="kn">import</span> <span class="nn">serial</span>
+<span class="kn">import</span> <span class="nn">bus_handler</span>
+<span class="kn">import</span> <span class="nn">modbus_tk</span>
+<span class="kn">import</span> <span class="nn">modbus_tk.defines</span> <span class="k">as</span> <span class="nn">cst</span>
+<span class="kn">from</span> <span class="nn">modbus_tk</span> <span class="kn">import</span> <span class="n">modbus_rtu</span>
+
+<span class="kn">import</span> <span class="nn">motor_control</span>
+<span class="kn">import</span> <span class="nn">joy_control</span>
+
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Lock</span><span class="p">,</span> <span class="n">Thread</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span>
+
+<span class="c1">#Board registers</span>
+<span class="n">_REG_INPUT_VOLTAGE</span>     <span class="o">=</span> <span class="mi">5</span>
+<span class="n">_REG_SENSORS_STATE</span>     <span class="o">=</span> <span class="mi">6</span>
+
+<span class="n">_REG_FRONT_ACTUATOR</span>    <span class="o">=</span> <span class="mi">10</span>
+<span class="n">_REG_REAR_ACTUATOR</span>     <span class="o">=</span> <span class="mi">11</span>
+<span class="n">_REG_WATER_PUMP</span>        <span class="o">=</span> <span class="mi">14</span>
+<span class="n">_REG_VACUUM_CLEAN</span>      <span class="o">=</span> <span class="mi">16</span>
+
+<span class="n">_REG_FRESH_FULL</span>        <span class="o">=</span> <span class="mi">20</span>
+<span class="n">_REG_FRESH_EMPTY</span>       <span class="o">=</span> <span class="mi">21</span>
+
+<span class="n">_REG_DIRTY_FULL</span>        <span class="o">=</span> <span class="mi">22</span>
+<span class="n">_REG_DIRTY_EMPTY</span>       <span class="o">=</span> <span class="mi">23</span>
+
+<span class="n">_REG_FLOW_METER</span>        <span class="o">=</span> <span class="mi">24</span>
+
+<span class="n">_REG_LED_1</span>             <span class="o">=</span> <span class="mi">30</span>
+<span class="n">_REG_LED_2</span>             <span class="o">=</span> <span class="mi">31</span>
+<span class="n">_REG_LED_3</span>             <span class="o">=</span> <span class="mi">32</span>
+<span class="n">_REG_LED_4</span>             <span class="o">=</span> <span class="mi">33</span>
+
+<span class="n">_REG_US_SENSOR_1</span>       <span class="o">=</span> <span class="mi">40</span>
+<span class="n">_REG_US_SENSOR_2</span>       <span class="o">=</span> <span class="mi">41</span>
+<span class="n">_REG_US_SENSOR_3</span>       <span class="o">=</span> <span class="mi">42</span>
+<span class="n">_REG_US_SENSOR_4</span>       <span class="o">=</span> <span class="mi">43</span>
+<span class="n">_REG_US_SENSOR_5</span>       <span class="o">=</span> <span class="mi">44</span>
+
+<span class="n">_REG_IR_SENSOR_1</span>       <span class="o">=</span> <span class="mi">45</span>
+<span class="n">_REG_IR_SENSOR_2</span>       <span class="o">=</span> <span class="mi">46</span>
+
+<span class="n">_REG_DISTANCE_THRESH</span>   <span class="o">=</span> <span class="mi">47</span>
+
+
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<div class="viewcode-block" id="Cleaner"><a class="viewcode-back" href="../index.html#cleaner.Cleaner">[docs]</a><span class="k">class</span> <span class="nc">Cleaner</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Класс для работы с мойщиком.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">modbus_tk</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">create_logger</span><span class="p">(</span><span class="s2">&quot;console&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;config.yaml&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bus&#39;</span><span class="p">][</span><span class="s1">&#39;port_name&#39;</span><span class="p">])</span> 
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">addr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bus&#39;</span><span class="p">][</span><span class="s1">&#39;main_board_id&#39;</span><span class="p">]</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">master</span> <span class="o">=</span> <span class="n">bus_handler</span><span class="o">.</span><span class="n">Bus</span><span class="p">(</span><span class="n">port</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bus&#39;</span><span class="p">][</span><span class="s1">&#39;port_name&#39;</span><span class="p">],</span> <span class="n">baudrate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bus&#39;</span><span class="p">][</span><span class="s1">&#39;baudrate&#39;</span><span class="p">],</span> <span class="n">debug</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bus&#39;</span><span class="p">][</span><span class="s1">&#39;debug&#39;</span><span class="p">],</span> <span class="n">timeout</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;bus&#39;</span><span class="p">][</span><span class="s1">&#39;timeout&#39;</span><span class="p">])</span>                 
+
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_distance_thresh</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;sensors&#39;</span><span class="p">][</span><span class="s1">&#39;us_sens_1_thresh&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_distance_thresh</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;sensors&#39;</span><span class="p">][</span><span class="s1">&#39;us_sens_2_thresh&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_distance_thresh</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;sensors&#39;</span><span class="p">][</span><span class="s1">&#39;us_sens_3_thresh&#39;</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_distance_thresh</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;sensors&#39;</span><span class="p">][</span><span class="s1">&#39;us_sens_4_thresh&#39;</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">poll_board</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cleaning_status</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_down</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;adaptive_brush_level&#39;</span><span class="p">][</span><span class="s1">&#39;brush_cur_down&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_up</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;adaptive_brush_level&#39;</span><span class="p">][</span><span class="s1">&#39;brush_cur_up&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_good_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;adaptive_brush_level&#39;</span><span class="p">][</span><span class="s1">&#39;brush_cur_good_min&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_good_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;adaptive_brush_level&#39;</span><span class="p">][</span><span class="s1">&#39;brush_cur_good_max&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_setp</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;adaptive_brush_level&#39;</span><span class="p">][</span><span class="s1">&#39;brush_cur_setp&#39;</span><span class="p">]</span>              
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;use_brushes&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_brush</span> <span class="o">=</span> <span class="n">motor_control</span><span class="o">.</span><span class="n">VESC_motor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;left_brush_port&#39;</span><span class="p">],</span> <span class="s1">&#39;brush&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_brush</span> <span class="o">=</span> <span class="n">motor_control</span><span class="o">.</span><span class="n">VESC_motor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;right_brush_port&#39;</span><span class="p">],</span> <span class="s1">&#39;brush&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wheels&#39;</span><span class="p">][</span><span class="s1">&#39;use_wheels&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_wheel</span> <span class="o">=</span> <span class="n">motor_control</span><span class="o">.</span><span class="n">VESC_motor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wheels&#39;</span><span class="p">][</span><span class="s1">&#39;left_wheel_port&#39;</span><span class="p">],</span> <span class="s1">&#39;wheel&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wheels&#39;</span><span class="p">][</span><span class="s1">&#39;duty_limit&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_wheel</span> <span class="o">=</span> <span class="n">motor_control</span><span class="o">.</span><span class="n">VESC_motor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wheels&#39;</span><span class="p">][</span><span class="s1">&#39;right_wheel_port&#39;</span><span class="p">],</span> <span class="s1">&#39;wheel&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wheels&#39;</span><span class="p">][</span><span class="s1">&#39;duty_limit&#39;</span><span class="p">])</span>
+
+        <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">signal_handler</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vacuum_cleaner_state</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">moving_status</span> <span class="o">=</span> <span class="kc">True</span>        
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">poll_thread</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_poll_board</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">poll_thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">poll_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span> 
+
+
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;gamepad&#39;</span><span class="p">][</span><span class="s1">&#39;use_gamepad&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">joy</span> <span class="o">=</span> <span class="n">joy_control</span><span class="o">.</span><span class="n">XboxController</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;gamepad&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">])</span>                       
+
+    <span class="c1">#######PRIVATE FUNCTIONS#######</span>
+
+    <span class="k">def</span> <span class="nf">signal_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">sig</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Exit&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">poll_board</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wheels&#39;</span><span class="p">][</span><span class="s1">&#39;use_wheels&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_wheel</span><span class="o">.</span><span class="n">motor</span><span class="o">.</span><span class="n">stop_heartbeat</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_wheel</span><span class="o">.</span><span class="n">motor</span><span class="o">.</span><span class="n">stop_heartbeat</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;use_brushes&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>    
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_brush</span><span class="o">.</span><span class="n">motor</span><span class="o">.</span><span class="n">stop_heartbeat</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_brush</span><span class="o">.</span><span class="n">motor</span><span class="o">.</span><span class="n">stop_heartbeat</span><span class="p">()</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_getSignedNumber</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">number</span><span class="p">,</span> <span class="n">bitLength</span><span class="p">):</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="n">bitLength</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">number</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">bitLength</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">number</span> <span class="o">|</span> <span class="o">~</span><span class="n">mask</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">number</span> <span class="o">&amp;</span> <span class="n">mask</span>   
+
+    <span class="k">def</span> <span class="nf">except_decorator</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+                <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">wrapped</span>
+
+
+    <span class="k">def</span> <span class="nf">_poll_board</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_data</span><span class="p">()</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cleaning_status</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_adaptive_level_poll</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;use_brushes&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">left_brush</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_setp</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">right_brush</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_setp</span><span class="p">)</span>                        
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;error while reading device&quot;</span><span class="p">)</span>
+
+
+    <span class="nd">@except_decorator</span>
+    <span class="k">def</span> <span class="nf">_read_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">READ_HOLDING_REGISTERS</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+        
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;FLOW_METER&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_FLOW_METER</span><span class="p">]</span>
+
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;INPUT_VOLTAGE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_INPUT_VOLTAGE</span><span class="p">]</span>
+
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;FRONT_ACTUATOR_CMD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getSignedNumber</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">_REG_FRONT_ACTUATOR</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;REAR_ACTUATOR_CMD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getSignedNumber</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">_REG_REAR_ACTUATOR</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;WATER_PUMP_CMD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_WATER_PUMP</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;VACUUM_CLEAN_CMD&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_VACUUM_CLEAN</span><span class="p">]</span>
+
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_US_SENSOR_1</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_US_SENSOR_2</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_US_SENSOR_3</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_4&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_US_SENSOR_4</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_5&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_US_SENSOR_5</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;IR_SENSOR_1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_IR_SENSOR_1</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;IR_SENSOR_2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_IR_SENSOR_2</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;SENSORS_STATE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_SENSORS_STATE</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_FRESH_FULL</span><span class="p">]:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;FRESH_WATER_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;FULL&#39;</span>
+        <span class="k">elif</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_FRESH_EMPTY</span><span class="p">]:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;FRESH_WATER_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;OK&#39;</span>
+        <span class="k">elif</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_FRESH_EMPTY</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_FRESH_FULL</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;FRESH_WATER_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;EMPTY&#39;</span>             
+
+
+        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_DIRTY_FULL</span><span class="p">]:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;DIRTY_WATER_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;FULL&#39;</span>
+        <span class="k">elif</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_DIRTY_EMPTY</span><span class="p">]:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;DIRTY_WATER_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;OK&#39;</span>
+        <span class="k">elif</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_DIRTY_EMPTY</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">values</span><span class="p">[</span><span class="n">_REG_DIRTY_FULL</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s2">&quot;DIRTY_WATER_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;EMPTY&#39;</span>     
+
+        <span class="k">return</span> <span class="n">data</span>
+
+
+
+    <span class="k">def</span> <span class="nf">_adaptive_level_poll</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;use_brushes&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;adaptive_brush_level&#39;</span><span class="p">][</span><span class="s1">&#39;use_adaptive_control&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+
+            <span class="n">right_brush_current</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_brush</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+            <span class="n">left_brush_current</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_brush</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">right_brush_current</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_down</span> <span class="ow">and</span> <span class="n">left_brush_current</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_down</span><span class="p">:</span>
+                <span class="c1">#self.pub_front_wheel.publish(-250)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">front_actuator_control</span><span class="p">(</span><span class="s2">&quot;down&quot;</span><span class="p">)</span>
+                <span class="c1">#print(&quot;ACT_DOWN&quot;)</span>
+            <span class="k">elif</span> <span class="n">right_brush_current</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_up</span> <span class="ow">and</span> <span class="n">left_brush_current</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_up</span><span class="p">:</span>
+                <span class="c1">#self.pub_front_wheel.publish(250)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">front_actuator_control</span><span class="p">(</span><span class="s2">&quot;up&quot;</span><span class="p">)</span>
+                <span class="c1">#print(&quot;ACT_UP&quot;)</span>
+            <span class="k">elif</span> <span class="n">right_brush_current</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_good_min</span> <span class="ow">and</span> <span class="n">right_brush_current</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_good_max</span> <span class="ow">and</span> <span class="n">left_brush_current</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_good_min</span> <span class="ow">and</span> <span class="n">left_brush_current</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_good_max</span><span class="p">:</span>           
+                <span class="c1">#self.pub_front_wheel.publish(250)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">front_actuator_control</span><span class="p">(</span><span class="s2">&quot;up&quot;</span><span class="p">)</span>
+                <span class="c1">#print(&quot;ACT_NORM&quot;)</span>
+
+
+
+<div class="viewcode-block" id="Cleaner.poll_joy"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.poll_joy">[docs]</a>    <span class="k">def</span> <span class="nf">poll_joy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Опрос геймпада и управление исполнительными механизмами по командам с него</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            None</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>          
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">joy</span><span class="o">.</span><span class="n">poll_joy</span><span class="p">()</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">joy</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="c1">#print(val)</span>
+            <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">8</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.9</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">front_actuator_control</span><span class="p">(</span><span class="s1">&#39;up&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.9</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">front_actuator_control</span><span class="p">(</span><span class="s1">&#39;down&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mf">0.9</span> <span class="ow">and</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.9</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">front_actuator_control</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">)</span>    
+
+            <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">9</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.9</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rear_actuator_control</span><span class="p">(</span><span class="s1">&#39;up&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.9</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rear_actuator_control</span><span class="p">(</span><span class="s1">&#39;down&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mf">0.9</span> <span class="ow">and</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">3</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.9</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">rear_actuator_control</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">3</span><span class="p">]:</span>
+                 <span class="bp">self</span><span class="o">.</span><span class="n">vacuum_cleaner_control</span><span class="p">(</span><span class="ow">not</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">vacuum_cleaner_state</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">2</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">stop_all</span><span class="p">()</span>                      
+
+            <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">8</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cleaning_status</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">set_cleaner_mode</span><span class="p">(</span><span class="s2">&quot;stop&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">set_cleaner_mode</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">)</span>                                                                                      
+
+            <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">4</span><span class="p">]:</span> 
+                <span class="n">out_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">joy</span><span class="o">.</span><span class="n">joystickToDiff</span><span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span><span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">1.0</span><span class="p">,</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">1.0</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wheels&#39;</span><span class="p">][</span><span class="s1">&#39;use_wheels&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">left_wheel</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="n">out_val</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">right_wheel</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="n">out_val</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cleaning_status</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.05</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">water_pump_control</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">joy</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="p">,</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;water_pump&#39;</span><span class="p">][</span><span class="s1">&#39;min_power&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;water_pump&#39;</span><span class="p">][</span><span class="s1">&#39;max_power&#39;</span><span class="p">])))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">water_pump_control</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>              
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;error while polling gamepad&quot;</span><span class="p">)</span></div>
+
+
+    <span class="c1">############################ </span>
+
+
+    <span class="k">def</span> <span class="nf">stop_moving</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">state</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">moving_status</span> <span class="o">=</span> <span class="n">state</span>          
+
+
+<div class="viewcode-block" id="Cleaner.get_data"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.get_data">[docs]</a>    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Чтение данных с платы контроллера мойщика</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            None</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * Словарь с ключами: </span>
+<span class="sd">                | &quot;FLOW_METER&quot;, </span>
+<span class="sd">                | &quot;INPUT_VOLTAGE&quot;, </span>
+<span class="sd">                | &quot;FRONT_ACTUATOR_CMD&quot; </span>
+<span class="sd">                | &quot;REAR_ACTUATOR_CMD&quot; </span>
+<span class="sd">                | &quot;WATER_PUMP_CMD&quot; </span>
+<span class="sd">                | &quot;VACUUM_CLEAN_CMD&quot; </span>
+<span class="sd">                | &quot;US_SENSOR_1&quot; </span>
+<span class="sd">                | &quot;US_SENSOR_2&quot; </span>
+<span class="sd">                | &quot;US_SENSOR_3&quot; </span>
+<span class="sd">                | &quot;US_SENSOR_4&quot; </span>
+<span class="sd">                | &quot;IR_SENSOR_1&quot;</span>
+<span class="sd">                | &quot;IR_SENSOR_2&quot;</span>
+<span class="sd">                | &quot;FRESH_WATER_LEVEL&quot; </span>
+<span class="sd">                | &quot;DIRTY_WATER_LEVEL&quot; </span>
+
+<span class="sd">        &quot;&quot;&quot;</span>        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span></div>
+
+
+<div class="viewcode-block" id="Cleaner.get_distances"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.get_distances">[docs]</a>    <span class="k">def</span> <span class="nf">get_distances</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Чтение данных с датчиков расстояния</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            None</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * Словарь с ключами: </span>
+<span class="sd">                | &quot;US_SENSOR_1&quot;, </span>
+<span class="sd">                | &quot;US_SENSOR_2&quot;, </span>
+<span class="sd">                | &quot;US_SENSOR_3&quot; </span>
+<span class="sd">                | &quot;US_SENSOR_4&quot; </span>
+<span class="sd">                | &quot;US_SENSOR_5&quot;</span>
+<span class="sd">                | &quot;IR_SENSOR_1&quot;</span>
+<span class="sd">                | &quot;IR_SENSOR_2&quot; </span>
+
+<span class="sd">        &quot;&quot;&quot;</span>          
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_1&quot;</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_2&quot;</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_3&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_3&quot;</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_4&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span><span class="p">[</span><span class="s2">&quot;US_SENSOR_4&quot;</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;IR_SENSOR_1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span><span class="p">[</span><span class="s2">&quot;IR_SENSOR_1&quot;</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;IR_SENSOR_2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_data</span><span class="p">[</span><span class="s2">&quot;IR_SENSOR_2&quot;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+
+<div class="viewcode-block" id="Cleaner.set_distance_thresh"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.set_distance_thresh">[docs]</a>    <span class="nd">@except_decorator</span>
+    <span class="k">def</span> <span class="nf">set_distance_thresh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sensor</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Установка порогого значения для датчика расстояния.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sensor(int): Номер датчика (0-4) </span>
+<span class="sd">            val(int): Значение в мм (0-2500)</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * True если отправка команды прошла успешно</span>
+<span class="sd">            * False если при отправке команды произошла ошибка</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>         
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="n">ret</span> <span class="o">=</span>  <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_DISTANCE_THRESH</span> <span class="o">+</span> <span class="n">sensor</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="n">val</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Cleaner.get_statuses"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.get_statuses">[docs]</a>    <span class="nd">@except_decorator</span>
+    <span class="k">def</span> <span class="nf">get_statuses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Получение статусов мойки, и работы исполнительных механизмов</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            None</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * Словарь с ключами: </span>
+<span class="sd">                | &quot;CLEANING_STATUS&quot;, </span>
+<span class="sd">                | &quot;FRONT_ACTUATOR_CMD&quot;, </span>
+<span class="sd">                | &quot;REAR_ACTUATOR_CMD&quot; </span>
+<span class="sd">                | &quot;WATER_PUMP_CMD&quot; </span>
+<span class="sd">                | &quot;VACUUM_CLEAN_CMD&quot;</span>
+<span class="sd">                | &quot;MOVING_STATUS&quot; </span>
+<span class="sd">                | &quot;SENSORS_STATE&quot;  </span>
+
+<span class="sd">        &quot;&quot;&quot;</span> 
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cleaning_status</span></div>
+
+
+<div class="viewcode-block" id="Cleaner.front_actuator_control"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.front_actuator_control">[docs]</a>    <span class="nd">@except_decorator</span>
+    <span class="k">def</span> <span class="nf">front_actuator_control</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Управление передним актуатором</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            val(str): </span>
+<span class="sd">                | &quot;up&quot; - поднятие актуатора</span>
+<span class="sd">                | &quot;down&quot; - опускание актуатора</span>
+<span class="sd">                | &quot;stop&quot; - оcтанов актуатора              </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * True если отправка команды прошла успешно</span>
+<span class="sd">            * False если при отправке команды произошла ошибка</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>         
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="s1">&#39;up&#39;</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_FRONT_ACTUATOR</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">val</span> <span class="o">==</span> <span class="s1">&#39;down&#39;</span><span class="p">:</span>   
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_FRONT_ACTUATOR</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=-</span><span class="mi">255</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">val</span> <span class="o">==</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span>   
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_FRONT_ACTUATOR</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>              
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>    
+        <span class="k">return</span> <span class="n">ret</span>    </div>
+
+
+<div class="viewcode-block" id="Cleaner.rear_actuator_control"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.rear_actuator_control">[docs]</a>    <span class="nd">@except_decorator</span>
+    <span class="k">def</span> <span class="nf">rear_actuator_control</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Управление задним актуатором</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            val(str): </span>
+<span class="sd">                | &quot;up&quot; - поднятие актуатора</span>
+<span class="sd">                | &quot;down&quot; - опускание актуатора </span>
+<span class="sd">                | &quot;stop&quot; - оcтанов актуатора              </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * True если отправка команды прошла успешно</span>
+<span class="sd">            * False если при отправке команды произошла ошибка</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>         
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="s1">&#39;up&#39;</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span>  <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_REAR_ACTUATOR</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">val</span> <span class="o">==</span> <span class="s1">&#39;down&#39;</span><span class="p">:</span> 
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_REAR_ACTUATOR</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=-</span><span class="mi">255</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">val</span> <span class="o">==</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span> 
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_REAR_ACTUATOR</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>                
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>    
+        <span class="k">return</span> <span class="n">ret</span>     </div>
+
+
+<div class="viewcode-block" id="Cleaner.water_pump_control"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.water_pump_control">[docs]</a>    <span class="nd">@except_decorator</span>    
+    <span class="k">def</span> <span class="nf">water_pump_control</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Управление насососм чистой воды.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            val(int): мощность работы насоса (0-255). </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * True если отправка команды прошла успешно</span>
+<span class="sd">            * False если при отправке команды произошла ошибка</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">val</span><span class="p">))</span>         
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_WATER_PUMP</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="n">val</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+
+<div class="viewcode-block" id="Cleaner.vacuum_cleaner_control"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.vacuum_cleaner_control">[docs]</a>    <span class="nd">@except_decorator</span>
+    <span class="k">def</span> <span class="nf">vacuum_cleaner_control</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Управление пылесосом.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            val(Bool): Режим работы. True - вкл, False - выкл. </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * True если отправка команды прошла успешно</span>
+<span class="sd">            * False если при отправке команды произошла ошибка</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vacuum_cleaner_state</span> <span class="o">=</span> <span class="n">val</span>        
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">val</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_VACUUM_CLEAN</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_VACUUM_CLEAN</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>    
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+
+
+<div class="viewcode-block" id="Cleaner.LED_control"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.LED_control">[docs]</a>    <span class="nd">@except_decorator</span>
+    <span class="k">def</span> <span class="nf">LED_control</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Управление подсветкой.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            channel(int): Канал подсветки (0-1) </span>
+<span class="sd">            state(bool): Режим работы. True - вкл, False - выкл</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * True если отправка команды прошла успешно</span>
+<span class="sd">            * False если при отправке команды произошла ошибка</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>         
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">master</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">addr</span><span class="p">,</span> <span class="n">cst</span><span class="o">.</span><span class="n">WRITE_SINGLE_REGISTER</span><span class="p">,</span> <span class="n">_REG_LED_1</span> <span class="o">+</span> <span class="n">channel</span><span class="p">,</span> <span class="n">output_value</span><span class="o">=</span><span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mutex</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+
+<div class="viewcode-block" id="Cleaner.stop_all"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.stop_all">[docs]</a>    <span class="k">def</span> <span class="nf">stop_all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Выключение всех исполнительных механизмов</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            None</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            None </span>
+
+<span class="sd">        &quot;&quot;&quot;</span>          
+        <span class="bp">self</span><span class="o">.</span><span class="n">cleaning_status</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vacuum_cleaner_control</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">water_pump_control</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rear_actuator_control</span><span class="p">(</span><span class="s2">&quot;stop&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">front_actuator_control</span><span class="p">(</span><span class="s2">&quot;stop&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;wheels&#39;</span><span class="p">][</span><span class="s1">&#39;use_wheels&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_wheel</span><span class="o">.</span><span class="n">motor</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_wheel</span><span class="o">.</span><span class="n">motor</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;use_brushes&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>    
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_brush</span><span class="o">.</span><span class="n">motor</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_brush</span><span class="o">.</span><span class="n">motor</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span></div>
+
+
+
+
+
+<div class="viewcode-block" id="Cleaner.set_cleaner_mode"><a class="viewcode-back" href="../index.html#cleaner.Cleaner.set_cleaner_mode">[docs]</a>    <span class="nd">@except_decorator</span>
+    <span class="k">def</span> <span class="nf">set_cleaner_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Управление правым колесом.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            mode(str) Режим мойки:</span>
+<span class="sd">                | &#39;start&#39; - начало мойки</span>
+<span class="sd">                | &#39;stop&#39; - остановка мойки </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            * True если отправка команды прошла успешно</span>
+<span class="sd">            * False если при отправке команды произошла ошибка</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span>          
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;start&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cleaning_status</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">vacuum_cleaner_control</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rear_actuator_control</span><span class="p">(</span><span class="s1">&#39;down&#39;</span><span class="p">)</span>
+            <span class="c1">#self.front_actuator_control(&#39;down&#39;)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;use_brushes&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">left_brush</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_setp</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">right_brush</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">brush_cur_setp</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cleaning_status</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">vacuum_cleaner_control</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rear_actuator_control</span><span class="p">(</span><span class="s1">&#39;up&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">front_actuator_control</span><span class="p">(</span><span class="s1">&#39;up&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">&#39;brushes&#39;</span><span class="p">][</span><span class="s1">&#39;use_brushes&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">left_brush</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">right_brush</span><span class="o">.</span><span class="n">set_point</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>            
+
+        <span class="k">return</span> <span class="kc">True</span>    </div></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+
+    <span class="n">cleaner</span> <span class="o">=</span> <span class="n">Cleaner</span><span class="p">()</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">cleaner</span><span class="o">.</span><span class="n">left_wheel</span><span class="o">.</span><span class="n">get_data</span><span class="p">()</span>
+        <span class="n">cleaner</span><span class="o">.</span><span class="n">poll_joy</span><span class="p">()</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.02</span><span class="p">)</span>            
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Alex.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

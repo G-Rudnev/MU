@@ -1,0 +1,1 @@
+https://www.researchgate.net/post/How_can_I_calculate_the_Step_Size_Corrector_when_using_Kalman_as_MPPT_algorithm

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Cleaner’s documentation! &mdash; Cleaner  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="#" class="icon icon-home"> Cleaner
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Welcome to Cleaner’s documentation!</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Cleaner</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+      <li>Welcome to Cleaner’s documentation!</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="welcome-to-cleaner-s-documentation">
+<h1>Welcome to Cleaner’s documentation!<a class="headerlink" href="#welcome-to-cleaner-s-documentation" title="Permalink to this headline"></a></h1>
+<div class="toctree-wrapper compound">
+</div>
+<span class="target" id="module-cleaner"></span><p>Модуль для работы с контроллером поломойщика по шине Modbus RTU.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="cleaner.Cleaner">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cleaner.</span></span><span class="sig-name descname"><span class="pre">Cleaner</span></span><a class="reference internal" href="_modules/cleaner.html#Cleaner"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner" title="Permalink to this definition"></a></dt>
+<dd><p>Класс для работы с мойщиком.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.LED_control">
+<span class="sig-name descname"><span class="pre">LED_control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.LED_control"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.LED_control" title="Permalink to this definition"></a></dt>
+<dd><p>Управление подсветкой.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – Канал подсветки (0-1)</p></li>
+<li><p><strong>state</strong> (<em>bool</em>) – Режим работы. True - вкл, False - выкл</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>True если отправка команды прошла успешно</p></li>
+<li><p>False если при отправке команды произошла ошибка</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.front_actuator_control">
+<span class="sig-name descname"><span class="pre">front_actuator_control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">val</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.front_actuator_control"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.front_actuator_control" title="Permalink to this definition"></a></dt>
+<dd><p>Управление передним актуатором</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>val</strong> (<em>str</em>) – <div class="line-block">
+<div class="line">“up” - поднятие актуатора</div>
+<div class="line">”down” - опускание актуатора</div>
+<div class="line">”stop” - оcтанов актуатора</div>
+</div>
+</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>True если отправка команды прошла успешно</p></li>
+<li><p>False если при отправке команды произошла ошибка</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.get_data">
+<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.get_data" title="Permalink to this definition"></a></dt>
+<dd><p>Чтение данных с платы контроллера мойщика</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>None</strong> – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><div class="line-block">
+<div class="line">“FLOW_METER”,</div>
+<div class="line">”INPUT_VOLTAGE”,</div>
+<div class="line">”FRONT_ACTUATOR_CMD”</div>
+<div class="line">”REAR_ACTUATOR_CMD”</div>
+<div class="line">”WATER_PUMP_CMD”</div>
+<div class="line">”VACUUM_CLEAN_CMD”</div>
+<div class="line">”US_SENSOR_1”</div>
+<div class="line">”US_SENSOR_2”</div>
+<div class="line">”US_SENSOR_3”</div>
+<div class="line">”US_SENSOR_4”</div>
+<div class="line">”IR_SENSOR_1”</div>
+<div class="line">”IR_SENSOR_2”</div>
+<div class="line">”FRESH_WATER_LEVEL”</div>
+<div class="line">”DIRTY_WATER_LEVEL”</div>
+</div>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>Словарь с ключами</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.get_distances">
+<span class="sig-name descname"><span class="pre">get_distances</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.get_distances"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.get_distances" title="Permalink to this definition"></a></dt>
+<dd><p>Чтение данных с датчиков расстояния</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>None</strong> – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><div class="line-block">
+<div class="line">“US_SENSOR_1”,</div>
+<div class="line">”US_SENSOR_2”,</div>
+<div class="line">”US_SENSOR_3”</div>
+<div class="line">”US_SENSOR_4”</div>
+<div class="line">”US_SENSOR_5”</div>
+<div class="line">”IR_SENSOR_1”</div>
+<div class="line">”IR_SENSOR_2”</div>
+</div>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>Словарь с ключами</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.get_statuses">
+<span class="sig-name descname"><span class="pre">get_statuses</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.get_statuses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.get_statuses" title="Permalink to this definition"></a></dt>
+<dd><p>Получение статусов мойки, и работы исполнительных механизмов</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>None</strong> – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><div class="line-block">
+<div class="line">“CLEANING_STATUS”,</div>
+<div class="line">”FRONT_ACTUATOR_CMD”,</div>
+<div class="line">”REAR_ACTUATOR_CMD”</div>
+<div class="line">”WATER_PUMP_CMD”</div>
+<div class="line">”VACUUM_CLEAN_CMD”</div>
+<div class="line">”MOVING_STATUS”</div>
+<div class="line">”SENSORS_STATE”</div>
+</div>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>Словарь с ключами</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.poll_joy">
+<span class="sig-name descname"><span class="pre">poll_joy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.poll_joy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.poll_joy" title="Permalink to this definition"></a></dt>
+<dd><p>Опрос геймпада и управление исполнительными механизмами по командам с него</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>None</strong> – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.rear_actuator_control">
+<span class="sig-name descname"><span class="pre">rear_actuator_control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">val</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.rear_actuator_control"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.rear_actuator_control" title="Permalink to this definition"></a></dt>
+<dd><p>Управление задним актуатором</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>val</strong> (<em>str</em>) – <div class="line-block">
+<div class="line">“up” - поднятие актуатора</div>
+<div class="line">”down” - опускание актуатора</div>
+<div class="line">”stop” - оcтанов актуатора</div>
+</div>
+</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>True если отправка команды прошла успешно</p></li>
+<li><p>False если при отправке команды произошла ошибка</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.set_cleaner_mode">
+<span class="sig-name descname"><span class="pre">set_cleaner_mode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.set_cleaner_mode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.set_cleaner_mode" title="Permalink to this definition"></a></dt>
+<dd><p>Управление правым колесом.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>mode</strong> (<em>str</em>) – <div class="line-block">
+<div class="line">‘start’ - начало мойки</div>
+<div class="line">’stop’ - остановка мойки</div>
+</div>
+</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>True если отправка команды прошла успешно</p></li>
+<li><p>False если при отправке команды произошла ошибка</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.set_distance_thresh">
+<span class="sig-name descname"><span class="pre">set_distance_thresh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">val</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.set_distance_thresh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.set_distance_thresh" title="Permalink to this definition"></a></dt>
+<dd><p>Установка порогого значения для датчика расстояния.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sensor</strong> (<em>int</em>) – Номер датчика (0-4)</p></li>
+<li><p><strong>val</strong> (<em>int</em>) – Значение в мм (0-2500)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>True если отправка команды прошла успешно</p></li>
+<li><p>False если при отправке команды произошла ошибка</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.stop_all">
+<span class="sig-name descname"><span class="pre">stop_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.stop_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.stop_all" title="Permalink to this definition"></a></dt>
+<dd><p>Выключение всех исполнительных механизмов</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>None</strong> – </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.vacuum_cleaner_control">
+<span class="sig-name descname"><span class="pre">vacuum_cleaner_control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">val</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.vacuum_cleaner_control"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.vacuum_cleaner_control" title="Permalink to this definition"></a></dt>
+<dd><p>Управление пылесосом.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>val</strong> (<em>Bool</em>) – Режим работы. True - вкл, False - выкл.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>True если отправка команды прошла успешно</p></li>
+<li><p>False если при отправке команды произошла ошибка</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cleaner.Cleaner.water_pump_control">
+<span class="sig-name descname"><span class="pre">water_pump_control</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">val</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cleaner.html#Cleaner.water_pump_control"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cleaner.Cleaner.water_pump_control" title="Permalink to this definition"></a></dt>
+<dd><p>Управление насососм чистой воды.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>val</strong> (<em>int</em>) – мощность работы насоса (0-255).</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>True если отправка команды прошла успешно</p></li>
+<li><p>False если при отправке команды произошла ошибка</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Alex.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

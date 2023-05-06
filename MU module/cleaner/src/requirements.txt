@@ -1,0 +1,2 @@
+pyserial==3.5
+pyvesc==1.0.5
